@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>k6 Full Load Test Report</title>
+  <style>body{font-family:Inter,system-ui,Arial,sans-serif;padding:24px}pre{background:#111;color:#eee;padding:12px;overflow:auto}</style>
+</head>
+<body>
+  <h1>k6 Full Load Test Report</h1>
+  <p><strong>Source:</strong> artifacts/load_test/summary.txt</p>
+  <h2>Key Metrics</h2>
+  <ul>
+    <li><strong>Total requests:</strong> 100</li>
+    <li><strong>Throughput:</strong> 4.957409/s</li>
+    <li><strong>Avg latency:</strong> 3.06ms</li>
+    <li><strong>p(90):</strong> 3.54ms</li>
+    <li><strong>p(95):</strong> 4.71ms</li>
+    <li><strong>Errors:</strong> 0.00%</li>
+  </ul>
+
+  <h2>Raw k6 tail summary</h2>
+  <pre>
+==&gt; artifacts/load_test/k6_result_1768578062.txt &lt;==
+k6 image/platform not available and local k6 not installed; skipping load test.
+
+==&gt; artifacts/load_test/k6_result_1768578094.txt &lt;==
+k6 image/platform not available and local k6 not installed; skipping load test.
+
+==&gt; artifacts/load_test/k6_result_1768578766.txt &lt;==
+default   [  10% ] 5 VUs  02.0s/20s
+
+running (03.0s), 5/5 VUs, 10 complete and 0 interrupted iterations
+default   [  15% ] 5 VUs  03.0s/20s
+
+running (04.0s), 5/5 VUs, 15 complete and 0 interrupted iterations
+default   [  20% ] 5 VUs  04.0s/20s
+
+running (05.0s), 5/5 VUs, 20 complete and 0 interrupted iterations
+default   [  25% ] 5 VUs  05.0s/20s
+
+running (06.0s), 5/5 VUs, 25 complete and 0 interrupted iterations
+default   [  30% ] 5 VUs  06.0s/20s
+
+running (07.0s), 5/5 VUs, 30 complete and 0 interrupted iterations
+default   [  35% ] 5 VUs  07.0s/20s
+
+running (08.0s), 5/5 VUs, 35 complete and 0 interrupted iterations
+default   [  40% ] 5 VUs  08.0s/20s
+
+running (09.0s), 5/5 VUs, 40 complete and 0 interrupted iterations
+default   [  45% ] 5 VUs  09.0s/20s
+
+running (10.0s), 5/5 VUs, 45 complete and 0 interrupted iterations
+default   [  50% ] 5 VUs  10.0s/20s
+
+running (11.0s), 5/5 VUs, 50 complete and 0 interrupted iterations
+default   [  55% ] 5 VUs  11.0s/20s
+
+running (12.0s), 5/5 VUs, 55 complete and 0 interrupted iterations
+default   [  60% ] 5 VUs  12.0s/20s
+
+running (13.0s), 5/5 VUs, 60 complete and 0 interrupted iterations
+default   [  65% ] 5 VUs  13.0s/20s
+
+running (14.0s), 5/5 VUs, 65 complete and 0 interrupted iterations
+default   [  70% ] 5 VUs  14.0s/20s
+
+running (15.0s), 5/5 VUs, 70 complete and 0 interrupted iterations
+default   [  75% ] 5 VUs  15.0s/20s
+
+running (16.0s), 5/5 VUs, 75 complete and 0 interrupted iterations
+default   [  80% ] 5 VUs  16.0s/20s
+
+running (17.0s), 5/5 VUs, 80 complete and 0 interrupted iterations
+default   [  85% ] 5 VUs  17.0s/20s
+
+running (18.0s), 5/5 VUs, 85 complete and 0 interrupted iterations
+default   [  90% ] 5 VUs  18.0s/20s
+
+running (19.0s), 5/5 VUs, 90 complete and 0 interrupted iterations
+default   [  95% ] 5 VUs  19.0s/20s
+
+running (20.0s), 5/5 VUs, 95 complete and 0 interrupted iterations
+default   [ 100% ] 5 VUs  20.0s/20s
+
+
+  █ TOTAL RESULTS 
+
+    HTTP
+    http_req_duration..............: avg=3.06ms min=1.25ms med=2.42ms max=14.75ms p(90)=3.54ms p(95)=4.71ms
+      { expected_response:true }...: avg=3.06ms min=1.25ms med=2.42ms max=14.75ms p(90)=3.54ms p(95)=4.71ms
+    http_req_failed................: 0.00%  0 out of 100
+    http_reqs......................: 100    4.957409/s
+
+    EXECUTION
+    iteration_duration.............: avg=1s     min=1s     med=1s     max=1.04s   p(90)=1s     p(95)=1.01s 
+    iterations.....................: 100    4.957409/s
+    vus............................: 5      min=5        max=5
+    vus_max........................: 5      min=5        max=5
+
+    NETWORK
+    data_received..................: 16 kB  803 B/s
+    data_sent......................: 8.6 kB 426 B/s
+
+
+
+
+running (20.2s), 0/5 VUs, 100 complete and 0 interrupted iterations
+default ✓ [ 100% ] 5 VUs  20s
+
+==&gt; artifacts/load_test/k6_result_1768579345.txt &lt;==
+default   [  10% ] 5 VUs  02.0s/20s
+
+running (03.0s), 5/5 VUs, 10 complete and 0 interrupted iterations
+default   [  15% ] 5 VUs  03.0s/20s
+
+running (04.0s), 5/5 VUs, 15 complete and 0 interrupted iterations
+default   [  20% ] 5 VUs  04.0s/20s
+
+running (05.0s), 5/5 VUs, 20 complete and 0 interrupted iterations
+default   [  25% ] 5 VUs  05.0s/20s
+
+running (06.0s), 5/5 VUs, 25 complete and 0 interrupted iterations
+default   [  30% ] 5 VUs  06.0s/20s
+
+running (07.0s), 5/5 VUs, 30 complete and 0 interrupted iterations
+default   [  35% ] 5 VUs  07.0s/20s
+
+running (08.0s), 5/5 VUs, 35 complete and 0 interrupted iterations
+default   [  40% ] 5 VUs  08.0s/20s
+
+running (09.0s), 5/5 VUs, 40 complete and 0 interrupted iterations
+default   [  45% ] 5 VUs  09.0s/20s
+
+running (10.0s), 5/5 VUs, 45 complete and 0 interrupted iterations
+default   [  50% ] 5 VUs  10.0s/20s
+
+running (11.0s), 5/5 VUs, 50 complete and 0 interrupted iterations
+default   [  55% ] 5 VUs  11.0s/20s
+
+running (12.0s), 5/5 VUs, 55 complete and 0 interrupted iterations
+default   [  60% ] 5 VUs  12.0s/20s
+
+running (13.0s), 5/5 VUs, 60 complete and 0 interrupted iterations
+default   [  65% ] 5 VUs  13.0s/20s
+
+running (14.0s), 5/5 VUs, 65 complete and 0 interrupted iterations
+default   [  70% ] 5 VUs  14.0s/20s
+
+running (15.0s), 5/5 VUs, 70 complete and 0 interrupted iterations
+default   [  75% ] 5 VUs  15.0s/20s
+
+running (16.0s), 5/5 VUs, 75 complete and 0 interrupted iterations
+default   [  80% ] 5 VUs  16.0s/20s
+
+running (17.0s), 5/5 VUs, 80 complete and 0 interrupted iterations
+default   [  85% ] 5 VUs  17.0s/20s
+
+running (18.0s), 5/5 VUs, 85 complete and 0 interrupted iterations
+default   [  90% ] 5 VUs  18.0s/20s
+
+running (19.0s), 5/5 VUs, 90 complete and 0 interrupted iterations
+default   [  95% ] 5 VUs  19.0s/20s
+
+running (20.0s), 5/5 VUs, 95 complete and 0 interrupted iterations
+default   [ 100% ] 5 VUs  20.0s/20s
+
+
+  █ TOTAL RESULTS 
+
+    HTTP
+    http_req_duration..............: avg=3.13ms min=423.54µs med=2.4ms max=17.89ms p(90)=3.44ms p(95)=5.62ms
+      { expected_response:true }...: avg=3.13ms min=423.54µs med=2.4ms max=17.89ms p(90)=3.44ms p(95)=5.62ms
+    http_req_failed................: 0.00%  0 out of 100
+    http_reqs......................: 100    4.961674/s
+
+    EXECUTION
+    iteration_duration.............: avg=1s     min=1s       med=1s    max=1.05s   p(90)=1s     p(95)=1.01s 
+    iterations.....................: 100    4.961674/s
+    vus............................: 5      min=5        max=5
+    vus_max........................: 5      min=5        max=5
+
+    NETWORK
+    data_received..................: 16 kB  804 B/s
+    data_sent......................: 8.6 kB 427 B/s
+
+
+
+
+running (20.2s), 0/5 VUs, 100 complete and 0 interrupted iterations
+default ✓ [ 100% ] 5 VUs  20s
+
+==&gt; artifacts/load_test/k6_result_1768581496.txt &lt;==
+default   [  10% ] 5 VUs  02.0s/20s
+
+running (03.0s), 5/5 VUs, 10 complete and 0 interrupted iterations
+default   [  15% ] 5 VUs  03.0s/20s
+
+running (04.0s), 5/5 VUs, 15 complete and 0 interrupted iterations
+default   [  20% ] 5 VUs  04.0s/20s
+
+running (05.0s), 5/5 VUs, 20 complete and 0 interrupted iterations
+default   [  25% ] 5 VUs  05.0s/20s
+
+running (06.0s), 5/5 VUs, 25 complete and 0 interrupted iterations
+default   [  30% ] 5 VUs  06.0s/20s
+
+running (07.0s), 5/5 VUs, 30 complete and 0 interrupted iterations
+default   [  35% ] 5 VUs  07.0s/20s
+
+running (08.0s), 5/5 VUs, 35 complete and 0 interrupted iterations
+default   [  40% ] 5 VUs  08.0s/20s
+
+running (09.0s), 5/5 VUs, 40 complete and 0 interrupted iterations
+default   [  45% ] 5 VUs  09.0s/20s
+
+running (10.0s), 5/5 VUs, 45 complete and 0 interrupted iterations
+default   [  50% ] 5 VUs  10.0s/20s
+
+running (11.0s), 5/5 VUs, 50 complete and 0 interrupted iterations
+default   [  55% ] 5 VUs  11.0s/20s
+  </pre>
+</body>
+</html>
