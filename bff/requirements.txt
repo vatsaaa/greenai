@@ -1,0 +1,13 @@
+# Web Framework
+fastapi==0.109.1
+uvicorn[standard]==0.27.0
+
+# Database Connectivity (Asynchronous)
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+
+# Validation & Settings
+pydantic==2.5.3
+pydantic-settings==2.1.0
+prometheus-client==0.17.0
+python-json-logger==2.0.7

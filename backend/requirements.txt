@@ -1,0 +1,17 @@
+# Data Manipulation & ETL
+pandas==2.2.0
+numpy==1.26.3
+
+# Database Connectivity (Synchronous)
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Machine Learning & Math
+	scikit-learn==1.5.0
+
+# Configuration & Utilities
+PyYAML==6.0.1
+faker==22.5.1
+prometheus-client==0.17.0
+python-dotenv==1.0.0
+python-dotenv==1.0.0

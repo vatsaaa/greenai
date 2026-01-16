@@ -1,0 +1,226 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. CORE INFRASTRUCTURE
+  # ==========================================
+  db:
+    image: postgres:14-alpine
+    container_name: recon_db
+    environment:
+      # Credentials should be provided via environment (or a .env file for local dev).
+      # Do NOT hardcode secrets in this file.
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Automatically run your init scripts on first startup
+      - ./database/schema:/docker-entrypoint-initdb.d
+    networks:
+      - recon-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 2. ALWAYS-ON SERVICES (API & UI)
+  # ==========================================
+  bff:
+    build:
+      context: .
+      dockerfile: bff/Dockerfile
+    container_name: recon_bff
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # Provide a production-ready DATABASE_URL via env. Example stored in .env (local only).
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - recon-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Development-only BFF with host mount and hot-reload. Start with:
+  # `docker compose --profile dev up --build bff-dev`
+  bff-dev:
+    build:
+      context: .
+      dockerfile: bff/Dockerfile
+    container_name: recon_bff_dev
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/recondb
+    volumes:
+      - ./bff:/app/bff # Hot reload mapping (development only)
+    profiles: ["dev"]
+    networks:
+      - recon-net
+
+  # Frontend (development): mounts local files and runs the dev server.
+  # Use: `docker compose --profile dev up frontend` for a dev container with hot-reload.
+  frontend:
+    image: node:18-alpine
+    container_name: recon_ui_dev
+    working_dir: /app
+    profiles: ["dev"]
+    volumes:
+      - ./frontend:/app:delegated # Hot reload mapping for development
+      - /app/node_modules # Keep node_modules inside container
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install --silent && npm run dev"
+    depends_on:
+      - bff
+    networks:
+      - recon-net
+
+  # Frontend (prod-like): uses the multi-stage Dockerfile and serves via Nginx.
+  # Use: `docker compose --profile prod up frontend-prod` to build and run the production image.
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: recon_ui
+    profiles: ["prod"]
+    ports:
+      - "3000:80" # Maps localhost:3000 to Nginx port 80
+    depends_on:
+      - bff
+    networks:
+      - recon-net
+
+  # ==========================================
+  # 3. ON-DEMAND BATCH JOBS (PROFILES)
+  # ==========================================
+  # These containers handle the heavy lifting.
+  # Run them using: docker compose run <service_name>
+  
+  generate-data:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs"]
+    volumes:
+      - ./data_ingest:/app/data_ingest
+    command: python tools/generate_test_data.py
+    networks:
+      - recon-net
+
+  ingest-job:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Note: We use the service name 'db' as the hostname
+      DB_URL: ${DB_URL}
+    # In production profiles do not mount host source code. Use `ingest-job-dev`
+    # for local development which mounts `./backend`.
+    volumes:
+      - ./data_ingest:/app/data_ingest # Access generated CSVs
+    command: python backend/ingest_engine.py
+    networks:
+      - recon-net
+
+  ingest-job-dev:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs", "dev"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:password@db:5432/recondb
+    volumes:
+      - ./backend:/app/backend # Mount code for quick edits (dev only)
+      - ./data_ingest:/app/data_ingest
+    command: python backend/ingest_engine.py
+    networks:
+      - recon-net
+
+  diff-job:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL}
+    # Production: do not mount source code. Use `diff-job-dev` for development.
+    command: python backend/diff_engine.py
+    networks:
+      - recon-net
+
+  diff-job-dev:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs", "dev"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:password@db:5432/recondb
+    volumes:
+      - ./backend:/app/backend
+    command: python backend/diff_engine.py
+    networks:
+      - recon-net
+
+  ai-job:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL}
+    command: python backend/attribution_engine.py
+    networks:
+      - recon-net
+
+  ai-job-dev:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    profiles: ["jobs", "dev"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://postgres:password@db:5432/recondb
+    volumes:
+      - ./backend:/app/backend
+    command: python backend/attribution_engine.py
+    networks:
+      - recon-net
+
+volumes:
+  postgres_data:
+
+networks:
+  recon-net:
+    driver: bridge

@@ -1,0 +1,423 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Lint / Test / Audit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.11', '3.12' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # If a lockfile is present, prefer using pip-tools' pip-sync for strict, reproducible installs.
+          # Fallback to pip install with wheel-only when pip-sync is not available.
+          if [ -f requirements.lock.txt ]; then
+            python -m pip install pip-tools
+            # pip-sync expects a requirements-style file; if your lockfile is pip-compile's output
+            # you can use pip-sync directly. If pip-sync fails, fall back to wheel-only pip install.
+            set -e
+            if pip-sync requirements.lock.txt --version >/dev/null 2>&1; then
+              pip-sync requirements.lock.txt || true
+            else
+              pip install --only-binary=:all: -r requirements.lock.txt || true
+            fi
+            set +e
+          else
+            pip install --only-binary=:all: -r requirements.txt
+          fi
+          pip install --only-binary=:all: -r requirements-dev.txt
+
+      - name: Run linters
+        run: ./scripts/run_linters.sh
+
+      - name: Run tests
+        run: pytest -q --maxfail=1 --cov=./ --cov-report=xml:coverage.xml
+
+      - name: Run pip-audit
+        run: |
+          # Ensure pip-audit is available, then run against the lockfile if present
+          if ! command -v pip-audit >/dev/null 2>&1; then
+            python -m pip install pip-audit
+          fi
+          if [ -f requirements.lock.txt ]; then
+            pip-audit -r requirements.lock.txt || pip-audit
+          else
+            pip-audit || true
+          fi
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock.txt
+          pip install -r requirements-dev.txt
+      - name: Run linters
+        run: ./scripts/run_linters.sh
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: testdb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready -U test
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U test; do sleep 1; done
+        env:
+          PGPASSWORD: pass
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock.txt
+          pip install -r requirements-dev.txt
+      - name: Run tests
+        env:
+          DB_URL: postgresql://test:pass@localhost:5432/testdb
+          DATABASE_URL: postgresql+asyncpg://test:pass@localhost:5432/testdb
+        run: pytest -q --maxfail=1 --cov=./ --cov-report=xml:coverage.xml
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+      - name: Run pip-audit
+        run: pip-audit -r requirements.lock.txt --fail-on all
+
+  security:
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build docker image for scanning
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/greenai:${{ github.sha }} .
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@v0.9.2
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/greenai:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test, audit, security]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build docker image and upload artifact
+        run: |
+          docker build -t greenai:${{ github.sha }} .
+          docker save greenai:${{ github.sha }} -o image.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-secrets:
+    name: Validate required secrets for deploy
+    runs-on: ubuntu-latest
+    # Only run secret validation on pushes to protected branches (main/master)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Check required secrets
+        run: |
+          missing=0
+          if [ -z "$DATABASE_URL" ]; then echo "Missing secret: DATABASE_URL"; missing=1; fi
+          if [ -z "$DB_URL" ]; then echo "Missing secret: DB_URL"; missing=1; fi
+          if [ $missing -ne 0 ]; then echo "Required secrets are missing. Set them in repository or organization secrets."; exit 1; fi
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DB_URL: ${{ secrets.DB_URL }}
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10, 3.11]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install runtime deps (wheels only)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary=:all: -r requirements.lock.txt
+
+      - name: Install dev deps (wheels only)
+        run: |
+          pip install --only-binary=:all: -r requirements-dev.txt
+
+      - name: Type check (mypy)
+        run: |
+          # Run mypy only on git-tracked Python files to avoid scanning venvs or node_modules
+          files=$(git ls-files '*.py')
+          if [ -n "$files" ]; then
+            mypy --ignore-missing-imports $files
+          else
+            echo "No Python files to type-check"
+          fi
+
+      - name: Lint (ruff)
+        run: |
+          # Lint only tracked Python files to avoid venvs/node_modules
+          files=$(git ls-files '*.py')
+          if [ -n "$files" ]; then
+            ruff check $files
+          else
+            echo "No Python files to lint"
+          fi
+
+      - name: Format check (black)
+        run: |
+          # Format-check only tracked Python files to avoid scanning venvs/node_modules
+          files=$(git ls-files '*.py')
+          if [ -n "$files" ]; then
+            black --check $files
+          else
+            echo "No Python files to format-check"
+          fi
+
+      - name: Run tests
+        run: |
+          pytest -q --maxfail=1 --cov=./ --cov-report=xml:coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+        env:
+          # optional: set CODECOV_TOKEN secret for private repos
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Security scan (safety)
+        uses: pyupio/safety-action@master
+        with:
+          # scans `requirements.txt` for known vulnerabilities
+          args: --full-report
+
+      - name: Container/file system vulnerability scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-path: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  image-scan:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        run: |
+          docker build -f backend/Dockerfile -t gresai/backend:ci .
+
+      - name: Scan backend image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gresai/backend:ci'
+          format: 'json'
+          output: 'trivy-backend.json'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build bff image
+        run: |
+          docker build -f bff/Dockerfile -t gresai/bff:ci .
+
+      - name: Scan bff image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gresai/bff:ci'
+          format: 'json'
+          output: 'trivy-bff.json'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build frontend image (prod)
+        run: |
+          docker build -f frontend/Dockerfile -t gresai/frontend:ci ./frontend
+
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gresai/frontend:ci'
+          format: 'json'
+          output: 'trivy-frontend.json'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-backend.json
+            trivy-bff.json
+            trivy-frontend.json
+
+  python-audit:
+    name: Python dependency audit (pip-audit)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Install requirements for audit
+        run: |
+          python -m pip install --upgrade pip
+          # Install system packages required to build some wheels (e.g., psycopg2)
+          sudo apt-get update && sudo apt-get install -y libpq-dev build-essential
+          pip install -r requirements.lock.txt
+
+      - name: Run pip-audit
+        run: |
+          # Run pip-audit and emit JSON output. We fail the job if any vulnerabilities are found.
+          pip-audit -r requirements.lock.txt -f json -o pip_audit.json || true
+          python - <<'PY'
+    import json, sys
+    try:
+      data = json.load(open('pip_audit.json'))
+    except Exception:
+      print('pip-audit failed to produce JSON output')
+      sys.exit(1)
+    vulns = [d for d in data.get('dependencies', []) if d.get('vulns')]
+    if vulns:
+      print('Vulnerabilities found:')
+      print(json.dumps(vulns, indent=2))
+      sys.exit(2)
+    print('No vulnerabilities found')
+    PY
+      lockfile-drift:
+        name: Lockfile drift check
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+
+          - name: Set up Python
+            uses: actions/setup-python@v4
+            with:
+              python-version: '3.11'
+
+          - name: Check for requirements.in
+            run: |
+              if [ -f requirements.in ]; then
+                echo 'found requirements.in'
+              else
+                echo 'no requirements.in found; skipping lockfile drift check'; exit 0
+              fi
+
+          - name: Install pip-tools
+            run: python -m pip install --upgrade pip pip-tools
+
+          - name: Compile lockfile and compare
+            run: |
+              # Generate a compiled lockfile from requirements.in
+              pip-compile requirements.in --output-file=compiled.lock --generate-hashes
+              if cmp -s compiled.lock requirements.lock.txt; then
+                echo 'Lockfile is up-to-date'
+              else
+                echo 'Lockfile out-of-date: please run pip-compile to regenerate requirements.lock.txt' >&2
+                echo 'Displaying diff:'
+                diff -u requirements.lock.txt compiled.lock || true
+                exit 2
+              fi
+

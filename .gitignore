@@ -1,0 +1,60 @@
+# ==========================================
+# 1. SECRETS & ENVIRONMENT VARIABLES (CRITICAL)
+# ==========================================
+.env
+.env.*
+*.env
+secrets/
+
+# ==========================================
+# 2. PYTHON (Backend & BFF)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+prof/
+
+# ==========================================
+# 3. NODE.JS / FRONTEND
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# 4. DATABASE & VOLUMES
+# ==========================================
+# Ignore the local Docker volume folder so you don't commit the DB binary files
+postgres_data/
+
+# ==========================================
+# 5. DATA INGESTION (Generated Files)
+# ==========================================
+# Keep the folder structure, but ignore the actual CSVs
+data_ingest/*.csv
+data_ingest/*.parquet
+data_ingest/*.json
+
+# ==========================================
+# 6. IDE / EDITOR SETTINGS
+# ==========================================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# ==========================================
+# 7. LOGS & OS
+# ==========================================
+*.log
+Thumbs.db

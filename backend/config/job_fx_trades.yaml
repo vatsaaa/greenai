@@ -1,0 +1,35 @@
+job_name: "FX_TRADES_EOD_RECON"
+description: "Reconciles End of Day FX trades between Front Office and Risk System"
+
+source_a:
+  name: "SOURCE_A"
+  type: "csv"  # Options: csv, sql, parquet
+  connection:
+    path: "../data_ingest/source_system_a.csv"
+  mapping:
+    # Maps Source Column -> Canonical Column
+    "transaction_id": "transaction_id"
+    "trade_date": "trade_date"
+    "amount": "amount"
+    "currency": "currency"
+    "buy_sell": "buy_sell"
+
+source_b:
+  name: "SOURCE_B"
+  type: "csv" # Changed to 'sql' in a real scenario
+  connection:
+    path: "../data_ingest/source_system_b.csv"
+    # Example for SQL (commented out):
+    # connection_string: "postgresql://user:pass@host:5432/risk_db"
+    # query: "SELECT * FROM trades_eod WHERE business_date = '${BATCH_DATE}'"
+  mapping:
+    "transaction_id": "transaction_id"
+    "trade_date": "trade_date"
+    "amount": "amount"
+    "currency": "currency"
+    "buy_sell": "buy_sell"
+
+normalization_rules:
+  # Global rules applied to canonical data
+  date_format: "%Y-%m-%d"
+  uppercase_strings: true

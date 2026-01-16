@@ -1,0 +1,1 @@
+k6 image/platform not available and local k6 not installed; skipping load test.
